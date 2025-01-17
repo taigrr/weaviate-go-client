@@ -180,47 +180,12 @@ func NewClient(config Config) (*Client, error) {
 }
 
 // New client from config
-// Every function represents one API group of weaviate and provides a set of functions and builders to interact with them.
-//
-// The client uses the original data models as provided by weaviate itself.
-// All these models are provided in the sub module "github.com/weaviate/weaviate/entities/models"
+// For backwards compatibility, this function will panic if the client cannot be created
 func New(config Config) *Client {
-	con := connection.NewConnection(config.Scheme, config.Host, config.ConnectionClient, config.getTimeout(), config.Headers)
-
-	// some endpoints now require a className namespace.
-	// to determine if this new convention is to be used,
-	// we must check the weaviate server version
-	getVersionFn := func() string {
-		meta, err := misc.New(con, nil).MetaGetter().Do(context.Background())
-		if err == nil {
-			return meta.Version
-		}
-		return ""
-	}
-
-	dbVersionProvider := db.NewVersionProvider(getVersionFn)
-	dbVersionSupport := db.NewDBVersionSupport(dbVersionProvider)
-	gRPCVersionSupport := db.NewGRPCVersionSupport(dbVersionProvider)
-
-	grpcClient, err := createGrpcClient(config, gRPCVersionSupport)
+	client, err := NewClient(config)
 	if err != nil {
 		panic(err)
 	}
-
-	client := &Client{
-		connection:      con,
-		grpcClient:      grpcClient,
-		misc:            misc.New(con, dbVersionProvider),
-		schema:          schema.New(con),
-		c11y:            contextionary.New(con),
-		classifications: classifications.New(con),
-		graphQL:         graphql.New(con),
-		data:            data.New(con, dbVersionSupport),
-		batch:           batch.New(con, grpcClient, dbVersionSupport),
-		backup:          backup.New(con),
-		cluster:         cluster.New(con),
-	}
-
 	return client
 }
 
